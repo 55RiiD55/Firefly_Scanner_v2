@@ -4,7 +4,7 @@ import Image from "next/image";
 import { SubmitEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type LoginStep = "credentials" | "mobile" | "otp";
+type LoginStep = "credentials" | "otp";
 
 export default function LoginPage() {
   const [step, setStep] = useState<LoginStep>("credentials");
@@ -15,13 +15,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const [mobileNumber, setMobileNumber] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [resendTimer, setResendTimer] = useState(30);
+  const [resendTimer, setResendTimer] = useState(60);
 
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const router = useRouter();
@@ -83,90 +82,17 @@ export default function LoginPage() {
         return;
       }
 
-      /*
-       * OTP is enabled.
-       *
-       * Continue with the existing mobile → OTP flow.
-       */
-      if (!data.challengeToken) {
+      if (!data.challengeToken)
         throw new Error("Unable to start OTP verification.");
-      }
-
       setChallengeToken(data.challengeToken);
-
-      /*
-       * Use the phone number returned by the user
-       * record when available.
-       */
-      if (data.phone) {
-        const normalizedPhone = String(data.phone).replace(/\D/g, "");
-
-        /*
-         * The existing UI expects the 10-digit
-         * Indian mobile number.
-         */
-        setMobileNumber(
-          normalizedPhone.length === 10
-            ? normalizedPhone
-            : normalizedPhone.slice(-10),
-        );
-      }
-
-      setStep("mobile");
+      setOtp(["", "", "", "", "", ""]);
+      setResendTimer(60);
+      setStep("otp");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
           ? error.message
           : "Unable to verify your credentials.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // -----------------------------
-  // STEP 2: MOBILE NUMBER
-  // -----------------------------
-  const handleMobileSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage("");
-
-    // India mobile number validation
-    if (!/^[6-9]\d{9}$/.test(mobileNumber)) {
-      setErrorMessage("Please enter a valid 10-digit mobile number.");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mobileNumber,
-          challengeToken,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Unable to send OTP.");
-      }
-
-      setResendTimer(30);
-      setOtp(["", "", "", "", "", ""]);
-      setStep("otp");
-
-      setTimeout(() => {
-        otpRefs.current[0]?.focus();
-      }, 100);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unable to send OTP.",
       );
     } finally {
       setIsLoading(false);
@@ -258,7 +184,6 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          mobileNumber,
           otp: enteredOtp,
           challengeToken,
         }),
@@ -297,7 +222,6 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          mobileNumber,
           challengeToken,
         }),
       });
@@ -307,9 +231,10 @@ export default function LoginPage() {
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Unable to resend OTP.");
       }
+      setChallengeToken(data.challengeToken);
 
       setOtp(["", "", "", "", "", ""]);
-      setResendTimer(30);
+      setResendTimer(60);
 
       setTimeout(() => {
         otpRefs.current[0]?.focus();
@@ -323,7 +248,7 @@ export default function LoginPage() {
     }
   };
 
-  const stepNumber = step === "credentials" ? 1 : step === "mobile" ? 2 : 3;
+  const stepNumber = step === "credentials" ? 1 : 2;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black">
@@ -421,7 +346,7 @@ export default function LoginPage() {
           >
             {/* Step indicator */}
             <div className="mb-8 flex items-center justify-center gap-2">
-              {[1, 2, 3].map((item) => (
+              {[1, 2].map((item) => (
                 <div
                   key={item}
                   className={`h-1.5 rounded-full transition-all ${
@@ -458,7 +383,7 @@ export default function LoginPage() {
               <form onSubmit={handleCredentialsSubmit} className="space-y-5">
                 <div className="mb-8 text-center">
                   <p className="mb-3 text-xs font-medium uppercase tracking-[0.35em] text-white/50">
-                    Step 1 of 3
+                    Step 1 of 2
                   </p>
 
                   <h2 className="text-2xl font-semibold text-white sm:text-3xl">
@@ -568,99 +493,13 @@ export default function LoginPage() {
             )}
 
             {/* =====================================
-                STEP 2: MOBILE NUMBER
-            ====================================== */}
-            {step === "mobile" && (
-              <form onSubmit={handleMobileSubmit} className="space-y-5">
-                <div className="mb-8 text-center">
-                  <p className="mb-3 text-xs font-medium uppercase tracking-[0.35em] text-white/50">
-                    Step 2 of 3
-                  </p>
-
-                  <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-                    Verify Mobile Number
-                  </h2>
-
-                  <p className="mt-3 text-sm leading-6 text-white/55">
-                    Enter your mobile number to receive a verification code.
-                  </p>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="mobile"
-                    className="mb-2 block text-sm font-medium text-white/80"
-                  >
-                    Mobile Number
-                  </label>
-
-                  <div className="flex overflow-hidden rounded-xl border border-white/15 bg-black/20">
-                    <span className="flex items-center border-r border-white/15 px-4 text-sm text-white/60">
-                      +91
-                    </span>
-
-                    <input
-                      id="mobile"
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={10}
-                      value={mobileNumber}
-                      onChange={(event) =>
-                        setMobileNumber(event.target.value.replace(/\D/g, ""))
-                      }
-                      placeholder="9876543210"
-                      autoComplete="tel"
-                      className="
-                        h-12 min-w-0 flex-1
-                        bg-transparent
-                        px-4 text-sm text-white
-                        outline-none
-                        placeholder:text-white/30
-                      "
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="
-                    flex h-12 w-full items-center justify-center
-                    rounded-xl bg-white
-                    text-sm font-semibold text-black
-                    transition-all
-                    hover:bg-white/90
-                    active:scale-[0.99]
-                    disabled:cursor-not-allowed disabled:opacity-60
-                  "
-                >
-                  {isLoading ? "Sending OTP..." : "Send OTP"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorMessage("");
-                    setStep("credentials");
-                  }}
-                  className="
-                    w-full py-2 text-sm text-white/50
-                    transition hover:text-white
-                  "
-                >
-                  ← Back to login
-                </button>
-              </form>
-            )}
-
-            {/* =====================================
                 STEP 3: OTP VERIFICATION
             ====================================== */}
             {step === "otp" && (
               <form onSubmit={handleOtpSubmit} className="space-y-6">
                 <div className="text-center">
                   <p className="mb-3 text-xs font-medium uppercase tracking-[0.35em] text-white/50">
-                    Step 3 of 3
+                    Step 2 of 2
                   </p>
 
                   <h2 className="text-2xl font-semibold text-white sm:text-3xl">
@@ -668,11 +507,7 @@ export default function LoginPage() {
                   </h2>
 
                   <p className="mt-3 text-sm leading-6 text-white/55">
-                    Enter the 6-digit code sent to
-                  </p>
-
-                  <p className="mt-1 text-sm font-medium text-white/80">
-                    +91 {mobileNumber}
+                    Enter the 6-digit code sent to the configured email address.
                   </p>
                 </div>
 
@@ -754,14 +589,14 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => {
                     setErrorMessage("");
-                    setStep("mobile");
+                    setStep("credentials");
                   }}
                   className="
                     w-full py-1 text-sm text-white/50
                     transition hover:text-white
                   "
                 >
-                  ← Change mobile number
+                  ← Back to login
                 </button>
               </form>
             )}

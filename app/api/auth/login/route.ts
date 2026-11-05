@@ -24,6 +24,13 @@ export async function POST(request: Request) {
         { success: false, message: data.message ?? "Login failed" },
         { status: upstream.status },
       );
+    if (data.requiresOtp && data.challengeToken) {
+      return NextResponse.json({
+        success: true,
+        requiresOtp: true,
+        challengeToken: data.challengeToken,
+      });
+    }
     if (!data.token)
       return NextResponse.json(
         { success: false, message: "Missing backend token" },

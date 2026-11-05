@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import type { UserScenarioConfig } from "@/types/radioanalysis";
 
 const VIDEOS = [
-  "/assets/uplink_Videos/Timeline_2.mp4",
-  "/assets/uplink_Videos/Timeline_3.mp4",
+  "/assets/uplink_Videos/timeline_1.mp4",
+  "/assets/uplink_Videos/timeline_2.mp4",
 ] as const;
 
 export default function UplinkV2Page() {
@@ -16,8 +16,8 @@ export default function UplinkV2Page() {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [videoIndex, setVideoIndex] = useState(0);
+  const [needsUserAction, setNeedsUserAction] = useState(false);
 
-  // Prevent duplicate completion/navigation.
   const completedRef = useRef(false);
 
   // Verify scan completion and assigned scenario.
@@ -74,7 +74,7 @@ export default function UplinkV2Page() {
     };
   }, [router]);
 
-  // Automatically play the current video.
+  // Attempt muted autoplay for each video.
   useEffect(() => {
     if (!ready) return;
 
@@ -84,22 +84,27 @@ export default function UplinkV2Page() {
     let cancelled = false;
 
     setError("");
+    setNeedsUserAction(false);
 
     video.muted = true;
+    video.defaultMuted = true;
     video.volume = 0;
     video.controls = false;
+    video.playsInline = true;
 
-    // Begin each new video from the start.
     video.load();
 
     const playVideo = async () => {
       try {
         await video.play();
+
+        if (!cancelled) {
+          setNeedsUserAction(false);
+        }
       } catch {
         if (!cancelled) {
-          setError(
-            "Autoplay was blocked by the browser. Allow autoplay to continue.",
-          );
+          // Autoplay restriction is not a video-loading failure.
+          setNeedsUserAction(true);
         }
       }
     };
@@ -111,6 +116,26 @@ export default function UplinkV2Page() {
       video.pause();
     };
   }, [ready, videoIndex]);
+
+  // Retry playback directly from a user interaction.
+  const handleStartPlayback = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      video.muted = true;
+      video.volume = 0;
+
+      // Call play() directly inside the tap/click handler.
+      await video.play();
+
+      setNeedsUserAction(false);
+      setError("");
+    } catch {
+      setNeedsUserAction(true);
+      setError("Unable to start playback. Please tap to try again.");
+    }
+  };
 
   // Disable page-level keyboard video controls.
   useEffect(() => {
@@ -158,7 +183,6 @@ export default function UplinkV2Page() {
       return;
     }
 
-    // Mark uplink complete only after all 4 videos.
     completedRef.current = true;
 
     sessionStorage.setItem("radioanalysis_uplink_complete", "1");
@@ -167,6 +191,7 @@ export default function UplinkV2Page() {
   };
 
   const handleVideoError = () => {
+    setNeedsUserAction(false);
     setError(
       `Unable to load scanner video ${videoIndex + 1}: ${VIDEOS[videoIndex]}`,
     );
@@ -177,15 +202,6 @@ export default function UplinkV2Page() {
       className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black"
       onContextMenu={(event) => event.preventDefault()}
     >
-      {error && (
-        <p
-          role="alert"
-          className="absolute z-10 max-w-lg px-5 text-center text-red-400"
-        >
-          {error}
-        </p>
-      )}
-
       {ready && (
         <video
           key={videoIndex}
@@ -194,6 +210,7 @@ export default function UplinkV2Page() {
           autoPlay
           muted
           playsInline
+          webkit-playsinline="true"
           controls={false}
           disablePictureInPicture
           disableRemotePlayback
@@ -203,6 +220,10 @@ export default function UplinkV2Page() {
           className="pointer-events-none h-full w-full select-none object-cover"
           onEnded={handleVideoEnd}
           onError={handleVideoError}
+          onPlay={() => {
+            setNeedsUserAction(false);
+            setError("");
+          }}
           onVolumeChange={(event) => {
             const video = event.currentTarget;
 
@@ -212,6 +233,50 @@ export default function UplinkV2Page() {
             }
           }}
         />
+      )}
+
+      {/* Mobile browser autoplay fallback */}
+      {ready && needsUserAction && !error && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/75 px-6">
+          <div className="flex max-w-sm flex-col items-center text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-cyan-400/50 bg-cyan-400/10">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-8 w-8 text-cyan-400"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+
+            <h2 className="mb-2 text-lg font-semibold text-white">
+              Scanner Uplink Ready
+            </h2>
+
+            <p className="mb-6 text-sm text-gray-300">
+              Tap below to start the scanner video sequence.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleStartPlayback}
+              className="rounded-lg bg-cyan-500 px-8 py-3 text-sm font-semibold text-black transition hover:bg-cyan-400 active:scale-95"
+            >
+              Tap to Start
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Actual video loading/playback error */}
+      {error && (
+        <div
+          role="alert"
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black px-6"
+        >
+          <p className="max-w-lg text-center text-red-400">{error}</p>
+        </div>
       )}
     </main>
   );

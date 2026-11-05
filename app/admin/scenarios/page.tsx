@@ -30,6 +30,7 @@ import type {
 } from "@/types/radioanalysis";
 
 import { ISOTOPE_CATALOG } from "@/data/isotopeCatalog";
+import ImpressionRichEditor from "@/components/admin/ImpressionRichEditor";
 
 import type { UserImpression } from "@/types/radioanalysis";
 
@@ -490,8 +491,6 @@ export default function AdminScenariosPage() {
     [users],
   );
 
-  // Derive the selected form from fetched records.
-  // Avoid a second API request on every user change.
   const selectedRecord = useMemo(
     () =>
       scenarios.find((scenario) => String(scenario.userId) === selectedUserId),
@@ -1333,36 +1332,34 @@ export default function AdminScenariosPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <Field label="Impression Title">
-                      <input
-                        required
-                        maxLength={150}
-                        placeholder="Enter finding title"
-                        className={inputStyle}
+                    <div className="space-y-1.5">
+                      <span className="text-xs text-slate-400">
+                        Impression Title
+                      </span>
+                      <ImpressionRichEditor
                         value={item.title}
-                        onChange={(event) =>
-                          updateImpression(index, "title", event.target.value)
+                        onChange={(value) =>
+                          updateImpression(index, "title", value)
                         }
+                        maxLength={150}
+                        singleLine
+                        placeholder="Enter finding title"
                       />
-                    </Field>
+                    </div>
 
-                    <Field label="Description">
-                      <textarea
-                        required
-                        rows={3}
+                    <div className="space-y-1.5">
+                      <span className="text-xs text-slate-400">
+                        Description
+                      </span>
+                      <ImpressionRichEditor
+                        value={item.description}
+                        onChange={(value) =>
+                          updateImpression(index, "description", value)
+                        }
                         maxLength={3000}
                         placeholder="Describe the finding..."
-                        className={textareaStyle}
-                        value={item.description}
-                        onChange={(event) =>
-                          updateImpression(
-                            index,
-                            "description",
-                            event.target.value,
-                          )
-                        }
                       />
-                    </Field>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Volume2, Pause, Play, Square } from "lucide-react";
+import ImpressionFormattedText, {
+  plainImpressionText,
+} from "@/components/dashboard/ImpressionFormattedText";
 
 export interface ImpressionEntry {
   title: string;
@@ -22,7 +25,10 @@ export default function ImpressionSection({
   const speechText = useMemo(
     () =>
       impressions
-        .map((item, index) => `${item.title}. ${item.description}`)
+        .map(
+          (item, index) =>
+            `${plainImpressionText(item.title)}. ${plainImpressionText(item.description)}`,
+        )
         .join(". "),
     [impressions],
   );
@@ -138,12 +144,12 @@ export default function ImpressionSection({
             className="border-b border-slate-200 pb-4 last:border-b-0 last:pb-0"
           >
             <h3 className="text-sm font-bold text-slate-900 uppercase">
-              {item.title}
+              <ImpressionFormattedText value={item.title} inline />
             </h3>
 
-            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">
-              {item.description}
-            </p>
+            <div className="mt-2 text-sm leading-6 text-slate-900">
+              <ImpressionFormattedText value={item.description} inline />
+            </div>
           </article>
         ))}
       </div>

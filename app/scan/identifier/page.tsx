@@ -184,7 +184,7 @@ export default function ParticleImpactPage() {
   if (!config) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading...
+        Initializing Scanner...
       </main>
     );
   }

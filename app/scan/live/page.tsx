@@ -566,11 +566,9 @@ export default function LiveScanner() {
         <ImpressionSection impressions={getImpressions(scenario?.impression)} />
 
         {/* Row 7: Results navigation */}
-        {/* <footer className="flex flex-col items-start justify-between gap-4 border-t border-slate-800 pt-5 sm:flex-row sm:items-center">
+        <footer className="flex flex-col items-start justify-between gap-4 border-t border-slate-800 pt-5 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-base font-semibold">
-            Results
-            </h2>
+            <h2 className="text-base font-semibold">Results</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               View the detailed scanner results and analysis.
             </p>
@@ -583,7 +581,7 @@ export default function LiveScanner() {
             View Results
             <span aria-hidden="true">→</span>
           </Link>
-        </footer> */}
+        </footer>
       </div>
     </main>
   );
