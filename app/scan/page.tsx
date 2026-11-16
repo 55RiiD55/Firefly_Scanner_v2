@@ -43,6 +43,29 @@ export default function ScanPage() {
       setIsScanning(true);
       setIsStarting(false);
 
+      // Collect and persist weather for the newly started simulation.
+      // Weather failure should not prevent scanner initialization.
+      void fetch("/api/weather/current", {
+        method: "GET",
+        cache: "no-store",
+      })
+        .then(async (weatherResponse) => {
+          const weatherData = await weatherResponse.json();
+
+          if (!weatherResponse.ok) {
+            console.warn(
+              "[Scanner] Weather collection failed:",
+              weatherData.message,
+            );
+            return;
+          }
+
+          console.log("[Scanner] Environment snapshot collected:", weatherData);
+        })
+        .catch((error) => {
+          console.error("[Scanner] Weather collection error:", error);
+        });
+
       timeoutRef.current = setTimeout(() => {
         router.push("/scan/initialize");
       }, 3000);

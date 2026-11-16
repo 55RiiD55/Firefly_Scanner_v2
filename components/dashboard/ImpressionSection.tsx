@@ -13,10 +13,12 @@ export interface ImpressionEntry {
 
 interface ImpressionSectionProps {
   impressions: ImpressionEntry[];
+  showSpeechControls?: boolean;
 }
 
 export default function ImpressionSection({
   impressions,
+  showSpeechControls = true,
 }: ImpressionSectionProps) {
   const [speechStatus, setSpeechStatus] = useState<
     "idle" | "playing" | "paused"
@@ -95,60 +97,62 @@ export default function ImpressionSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Impression Summary</h2>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={playSpeech}
-            aria-label={
-              speechStatus === "paused"
-                ? "Resume reading"
-                : "Read all impressions aloud"
-            }
-            className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"
-          >
-            {speechStatus === "paused" ? (
-              <Play size={17} />
-            ) : (
-              <Volume2 size={17} />
+        {showSpeechControls && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={playSpeech}
+              aria-label={
+                speechStatus === "paused"
+                  ? "Resume reading"
+                  : "Read all impressions aloud"
+              }
+              className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"
+            >
+              {speechStatus === "paused" ? (
+                <Play size={17} />
+              ) : (
+                <Volume2 size={17} />
+              )}
+            </button>
+
+            {speechStatus === "playing" && (
+              <button
+                type="button"
+                onClick={pauseSpeech}
+                aria-label="Pause reading"
+                className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"
+              >
+                <Pause size={17} />
+              </button>
             )}
-          </button>
 
-          {speechStatus === "playing" && (
-            <button
-              type="button"
-              onClick={pauseSpeech}
-              aria-label="Pause reading"
-              className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"
-            >
-              <Pause size={17} />
-            </button>
-          )}
-
-          {speechStatus !== "idle" && (
-            <button
-              type="button"
-              onClick={stopSpeech}
-              aria-label="Stop reading"
-              className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"
-            >
-              <Square size={17} />
-            </button>
-          )}
-        </div>
+            {speechStatus !== "idle" && (
+              <button
+                type="button"
+                onClick={stopSpeech}
+                aria-label="Stop reading"
+                className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"
+              >
+                <Square size={17} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-5 space-y-4">
         {impressions.map((item, index) => (
           <article
             key={index}
-            className="border-b border-slate-200 pb-4 last:border-b-0 last:pb-0"
+            className="border-b border-slate-200 pb-1 last:border-b-0 last:pb-0"
           >
             <h3 className="text-sm font-bold text-slate-900 uppercase">
               <ImpressionFormattedText value={item.title} inline />
             </h3>
 
-            <div className="mt-2 text-sm leading-6 text-slate-900">
-              <ImpressionFormattedText value={item.description} inline />
+            <div className="mt-2 text-sm leading-[1.35] text-slate-900">
+              <ImpressionFormattedText value={item.description} />
             </div>
           </article>
         ))}

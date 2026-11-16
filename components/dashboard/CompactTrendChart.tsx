@@ -4,9 +4,8 @@ import { useEffect, useId, useMemo, useState } from "react";
 
 type TrendPoint = { timestamp: number; value: number };
 
-// Shared reference axes keep positive and negative scenario charts comparable.
 const COMMON_WINDOW_SECONDS = 340;
-const COMMON_CPS_RANGE = { min: 0, max: 2000 } as const;
+const COMMON_CPS_RANGE = { min: 0, max: 3000 } as const;
 const COMMON_DOSE_RATE_RANGE = { min: 0.5, max: 9.99 } as const;
 
 interface CompactTrendChartProps {
@@ -38,8 +37,6 @@ export default function CompactTrendChart({
 
     const timestamp = Date.now();
     setHistory((previous) => {
-      // Seed every scenario from zero so the trend visibly starts at baseline
-      // before moving toward the first actual live reading.
       const startingHistory =
         previous.length === 0
           ? [{ timestamp: timestamp - 1000, value: 0 }]

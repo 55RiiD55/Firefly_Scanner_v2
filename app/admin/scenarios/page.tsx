@@ -1381,7 +1381,6 @@ export default function AdminScenariosPage() {
             </div>
           </Section>
 
-          {/* Save bar */}
           <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-700 bg-[#14243a]/95 p-4 shadow-xl backdrop-blur">
             <p className="text-xs text-slate-400">
               Configuration for{" "}

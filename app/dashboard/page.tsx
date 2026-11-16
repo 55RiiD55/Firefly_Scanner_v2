@@ -98,6 +98,10 @@ export default function DashboardPage() {
 
   const environment = results.environmentSnapshot;
 
+  console.log("Dashboard results:", results);
+  console.log("Environment snapshot:", environment);
+  console.log("Environment type:", typeof environment);
+
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900 dark:bg-[#080d18] dark:text-slate-100">
       <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
@@ -298,7 +302,9 @@ export default function DashboardPage() {
 
                   <div className="mt-4 flex flex-col gap-1 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row sm:justify-between">
                     <span>Weather location: {environment.location}</span>
-                    <span>Observed: {formatDate(environment.observedAt)}</span>
+                    <span>
+                      Observed: {formatDate(environment.observedAt ?? "")}
+                    </span>
                   </div>
                 </>
               ) : (

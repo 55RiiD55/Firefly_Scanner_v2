@@ -155,8 +155,6 @@ function parseStyledText(value: string): InlineNode[] {
   return root;
 }
 
-// Remark plugin: transform styling markers within text nodes.
-// Markdown itself is parsed as a complete document first.
 const remarkImpressionStyles: Plugin<[], Root> = () => {
   return (tree) => {
     function transform(node: Root | RootContent | PhrasingContent) {
@@ -221,12 +219,7 @@ export default function ImpressionFormattedText({
       skipHtml
       remarkPlugins={[remarkGfm, remarkImpressionStyles]}
       components={{
-        p: ({ children }) =>
-          inline ? (
-            <span>{children}</span>
-          ) : (
-            <p className="mb-2 last:mb-0">{children}</p>
-          ),
+        p: ({ children }) => <p className="m-0 p-0 leading-5">{children}</p>,
 
         strong: ({ children }) => (
           <strong className="font-bold">{children}</strong>
@@ -237,14 +230,18 @@ export default function ImpressionFormattedText({
         del: ({ children }) => <del className="line-through">{children}</del>,
 
         ul: ({ children }) => (
-          <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>
+          <ul className="my-0 list-disc pl-5 leading-[1.35]">{children}</ul>
         ),
 
         ol: ({ children }) => (
-          <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>
+          <ol className="my-0 list-decimal pl-5 leading-[1.35]">{children}</ol>
         ),
 
-        li: ({ children }) => <li className="pl-1">{children}</li>,
+        li: ({ children }) => (
+          <li className="[&>p]:!m-0 [&>p]:!p-0 [&>p]:!leading-[1.35]">
+            {children}
+          </li>
+        ),
       }}
     >
       {cleaned}

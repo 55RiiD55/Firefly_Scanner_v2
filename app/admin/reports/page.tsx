@@ -10,6 +10,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import ImpressionSection from "@/components/dashboard/ImpressionSection";
+
 import { getImpressions } from "@/lib/impressions";
 
 import type { RadioUser } from "@/types/radioanalysis";
@@ -21,25 +23,43 @@ type ResultValue =
       target?: number;
     };
 
+type EnvironmentSnapshot = {
+  temperature?: number;
+  pressure?: number;
+  humidity?: number;
+  windSpeed?: number;
+  source?: string;
+  location?: string;
+  resolvedLocation?: string;
+  observedAt?: string;
+  timezone?: string;
+};
+
 type Report = {
   id: string;
   userId: string;
   status: string;
   startedAt: string;
   stoppedAt?: string | null;
+
   scenarioType?: "positive" | "negative";
   scenarioName?: string;
   location?: string;
+
   isotopes?: Array<{
     name: string;
     symbol: string;
     status: string;
   }>;
+
   impression?: {
     title: string;
     description: string;
   } | null;
+
   stableResults?: Record<string, ResultValue>;
+
+  environmentSnapshot?: EnvironmentSnapshot | null;
 };
 
 const surface = "rounded-2xl border border-slate-800 bg-[#101f33]";
@@ -78,6 +98,7 @@ function formatDate(value?: string | null) {
   if (!value) return "—";
 
   const date = new Date(value);
+
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
@@ -277,24 +298,13 @@ export default function AdminReportsPage() {
 
   const metrics = [
     { key: "cps", label: "Count Rate", unit: "CPS" },
-    {
-      key: "doseRate",
-      label: "Dose Rate",
-      unit: "µSv/h",
-    },
+    { key: "doseRate", label: "Dose Rate", unit: "µSv/h" },
     { key: "battery", label: "Battery", unit: "%" },
-    {
-      key: "temperature",
-      label: "Temperature",
-      unit: "°C",
-    },
-    {
-      key: "pressure",
-      label: "Pressure",
-      unit: "hPa",
-    },
+    { key: "temperature", label: "Temperature", unit: "°C" },
+    { key: "pressure", label: "Pressure", unit: "hPa" },
+    { key: "humidity", label: "Humidity", unit: "%" },
+    { key: "windSpeed", label: "Wind Speed", unit: "km/h" },
   ];
-
   return (
     <div className="space-y-6 text-white">
       {/* Header */}
@@ -491,7 +501,13 @@ export default function AdminReportsPage() {
                       "—",
                   ],
                   ["Started", formatDate(selectedReport.startedAt)],
-                  ["Location", selectedReport.location ?? "—"],
+                  [
+                    "Location",
+                    selectedReport.environmentSnapshot?.resolvedLocation ??
+                      selectedReport.environmentSnapshot?.location ??
+                      selectedReport.location ??
+                      "—",
+                  ],
                   ["Simulation ID", selectedReport.id],
                 ].map(([label, value]) => (
                   <div
@@ -509,9 +525,23 @@ export default function AdminReportsPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   {metrics.map(({ key, label, unit }) => {
-                    const value = resultNumber(
-                      selectedReport.stableResults?.[key],
-                    );
+                    const environment = selectedReport.environmentSnapshot;
+
+                    // Environmental snapshot takes priority over simulation results.
+                    const environmentValue =
+                      key === "temperature"
+                        ? environment?.temperature
+                        : key === "pressure"
+                          ? environment?.pressure
+                          : key === "humidity"
+                            ? environment?.humidity
+                            : key === "windSpeed"
+                              ? environment?.windSpeed
+                              : undefined;
+
+                    const value =
+                      environmentValue ??
+                      resultNumber(selectedReport.stableResults?.[key]);
 
                     return (
                       <div
@@ -519,6 +549,7 @@ export default function AdminReportsPage() {
                         className="rounded-xl border border-slate-800 p-4"
                       >
                         <p className="text-xs text-slate-400">{label}</p>
+
                         <p className="mt-2 text-xl font-semibold">
                           {value === undefined ? "—" : `${value} ${unit}`}
                         </p>
@@ -527,6 +558,19 @@ export default function AdminReportsPage() {
                   })}
                 </div>
               </div>
+
+              {/* Environmental Data Source */}
+              {selectedReport.environmentSnapshot && (
+                <p className="text-xs text-slate-500">
+                  Environmental data source:{" "}
+                  {selectedReport.environmentSnapshot.source ?? "—"}
+                  {" · "}
+                  Observed:{" "}
+                  {formatDate(
+                    selectedReport.environmentSnapshot.observedAt ?? "",
+                  )}
+                </p>
+              )}
 
               <div>
                 <h3 className="mb-2 text-sm font-semibold">Radioisotopes</h3>
@@ -551,34 +595,10 @@ export default function AdminReportsPage() {
               </div>
 
               <div className="mt-5">
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">
-                  Impression Summary
-                </h3>
-
-                {getImpressions(selectedReport.impression).length > 0 ? (
-                  <div className="space-y-3">
-                    {getImpressions(selectedReport.impression).map(
-                      (impression, index) => (
-                        <div
-                          key={`${selectedReport.id}-impression-${index}`}
-                          className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900"
-                        >
-                          <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {impression.title}
-                          </h4>
-
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                            {impression.description}
-                          </p>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No impressions available.
-                  </p>
-                )}
+                <ImpressionSection
+                  impressions={getImpressions(selectedReport.impression)}
+                  showSpeechControls={false}
+                />
               </div>
 
               <div className="flex flex-wrap gap-3 border-t border-slate-800 pt-5">

@@ -252,7 +252,7 @@ export default function LiveScanner() {
     weather,
     loading: weatherLoading,
     error: weatherError,
-  } = useLiveWeather(location);
+  } = useLiveWeather(!!scenario);
 
   const deviceName =
     scenario?.deviceName ??

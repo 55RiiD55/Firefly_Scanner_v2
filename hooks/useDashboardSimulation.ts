@@ -25,15 +25,16 @@ export type DashboardIsotope = {
   description: string;
 };
 
-export type EnvironmentSnapshot = {
-  temperature: number;
-  pressure: number;
-  humidity: number;
-  windSpeed: number;
-  source: string;
-  location: string;
-  observedAt: string;
-  timezone: string;
+type EnvironmentSnapshot = {
+  temperature?: number;
+  pressure?: number;
+  humidity?: number;
+  windSpeed?: number;
+  source?: string;
+  location?: string;
+  resolvedLocation?: string;
+  observedAt?: string;
+  timezone?: string;
 };
 
 type ImpressionApiItem = {
@@ -106,7 +107,6 @@ export function useDashboardSimulation() {
   }, []);
 
   const metrics = snapshot?.results ?? EMPTY_METRICS;
-
   // These are recorded stable values, not generated time-series data.
   const resultCards: ResultCardData[] = [
     {
