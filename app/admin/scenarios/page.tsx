@@ -40,6 +40,14 @@ type RangeKey = "cps" | "doseRate" | "temperature" | "pressure";
 
 type SectionId = "radiation" | "device" | "isotopes" | "video" | "impression";
 
+type LocationSuggestion = {
+  name: string;
+  state: string;
+  country: string;
+  lat: number;
+  lon: number;
+};
+
 const sectionStyle =
   "overflow-hidden rounded-2xl border border-slate-800 bg-[#101f33]";
 
@@ -431,6 +439,13 @@ export default function AdminScenariosPage() {
     "device",
   ]);
 
+  const [locationSuggestions, setLocationSuggestions] = useState<
+    LocationSuggestion[]
+  >([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -507,12 +522,101 @@ export default function AdminScenariosPage() {
 
   const displayedConfig = config ?? currentConfig;
 
+  const formConfig = config ?? savedConfig ?? currentConfig;
+
+  // Search OpenWeather locations after the admin pauses typing.
+  useEffect(() => {
+    const query = formConfig?.location?.trim() ?? "";
+
+    if (query.length < 3) {
+      setLocationSuggestions([]);
+      setLocationLoading(false);
+      setLocationError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setLocationLoading(true);
+      setLocationError("");
+
+      try {
+        const response = await fetch(
+          `/api/locations/search?q=${encodeURIComponent(query)}`,
+          {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.message ?? "Unable to search for locations.",
+          );
+        }
+
+        const results = Array.isArray(payload?.locations)
+          ? payload.locations
+          : [];
+
+        setLocationSuggestions(
+          results.filter(
+            (item: LocationSuggestion) =>
+              typeof item.name === "string" &&
+              typeof item.lat === "number" &&
+              typeof item.lon === "number",
+          ),
+        );
+      } catch (cause) {
+        if (!controller.signal.aborted) {
+          setLocationSuggestions([]);
+          setLocationError(
+            cause instanceof Error
+              ? cause.message
+              : "Unable to search for locations.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLocationLoading(false);
+        }
+      }
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [formConfig?.location]);
+
+  const selectLocation = (location: LocationSuggestion) => {
+    const label = [location.name, location.state, location.country]
+      .filter(Boolean)
+      .join(", ");
+
+    editConfig((previous) => ({
+      ...previous,
+      location: label,
+    }));
+    setLocationSuggestions([]);
+    setLocationError("");
+    setShowLocationSuggestions(false);
+  };
+
   const chooseUser = (userId: string) => {
     setSelectedUserId(userId);
     setConfig(null);
     setSavedConfig(null);
     setSuccess("");
     setError("");
+    setLocationSuggestions([]);
+    setLocationError("");
+    setLocationLoading(false);
+    setShowLocationSuggestions(false);
   };
 
   const editConfig = (
@@ -782,8 +886,6 @@ export default function AdminScenariosPage() {
 
   const selectedUser = activeUsers.find((user) => user.id === selectedUserId);
 
-  const formConfig = config ?? savedConfig ?? currentConfig;
-
   const isOpen = (id: SectionId) => expanded.includes(id);
 
   if (loading) {
@@ -1009,17 +1111,104 @@ export default function AdminScenariosPage() {
                   />
                   <input
                     required
+                    autoComplete="off"
                     className={`${inputStyle} pl-10`}
                     value={formConfig.location}
-                    onChange={(event) =>
+                    onFocus={() => setShowLocationSuggestions(true)}
+                    onBlur={() => {
+                      window.setTimeout(
+                        () => setShowLocationSuggestions(false),
+                        150,
+                      );
+                    }}
+                    onChange={(event) => {
+                      const value = event.target.value;
                       editConfig((previous) => ({
                         ...previous,
-                        location: event.target.value,
-                      }))
+                        location: value,
+                      }));
+                      setShowLocationSuggestions(true);
+                      setLocationSuggestions([]);
+                      setLocationLoading(false);
+                      setLocationError("");
+                    }}
+                    placeholder="Search city, state or country..."
+                    aria-autocomplete="list"
+                    aria-expanded={
+                      showLocationSuggestions && locationSuggestions.length > 0
                     }
-                    placeholder="Coimbatore, Tamil Nadu"
                   />
+
+                  {showLocationSuggestions &&
+                    formConfig.location.trim().length >= 3 && (
+                      <div
+                        role="listbox"
+                        aria-label="Location suggestions"
+                        className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-700 bg-[#0b192b] py-1 shadow-2xl"
+                      >
+                        {locationLoading && (
+                          <p className="px-4 py-3 text-xs text-slate-400">
+                            Searching locations...
+                          </p>
+                        )}
+
+                        {!locationLoading && locationError && (
+                          <p
+                            role="status"
+                            className="px-4 py-3 text-xs text-red-300"
+                          >
+                            {locationError}
+                          </p>
+                        )}
+
+                        {!locationLoading &&
+                          !locationError &&
+                          locationSuggestions.map((location, index) => {
+                            const label = [
+                              location.name,
+                              location.state,
+                              location.country,
+                            ]
+                              .filter(Boolean)
+                              .join(", ");
+
+                            return (
+                              <button
+                                key={`${location.lat}-${location.lon}-${index}`}
+                                type="button"
+                                role="option"
+                                aria-selected={false}
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => selectLocation(location)}
+                                className="block w-full px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-blue-500/10"
+                              >
+                                <span className="block font-medium">
+                                  {location.name}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-slate-400">
+                                  {[location.state, location.country]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </span>
+                                <span className="sr-only">{label}</span>
+                              </button>
+                            );
+                          })}
+
+                        {!locationLoading &&
+                          !locationError &&
+                          locationSuggestions.length === 0 && (
+                            <p className="px-4 py-3 text-xs text-slate-400">
+                              No matching locations found.
+                            </p>
+                          )}
+                      </div>
+                    )}
                 </div>
+                <p className="text-xs text-slate-500">
+                  Type at least 3 characters and select a suggestion, or enter a
+                  location manually.
+                </p>
               </Field>
 
               <BatteryEditor
